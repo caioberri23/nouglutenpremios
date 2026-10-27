@@ -1,0 +1,909 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Roleta Schützen · Nou Glúten Café</title>
+<meta name="description" content="Entrou no clima da Schützen? Gire a roleta da Nou Glúten e ganhe um prêmio na hora.">
+<meta name="theme-color" content="#23452A">
+<meta property="og:title" content="Gire a roleta e ganhe um prêmio! · Nou Glúten">
+<meta property="og:description" content="Cadastre-se, gire e descubra na hora o que a Nou Glúten preparou para você.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800;900&family=UnifrakturMaguntia&display=swap" rel="stylesheet">
+
+<script>
+/* =====================================================================
+   CONFIGURAÇÃO — tudo que muda na campanha fica aqui.
+   Para trocar prêmios, chances, validade, códigos ou mensagens de
+   WhatsApp, edite apenas este objeto. A página se monta sozinha a partir dele.
+   ===================================================================== */
+window.ROLETA_CONFIG = {
+  // Unidades: a pessoa escolhe onde vai usar o prêmio e cai no WhatsApp dessa unidade.
+  // whatsapp: só números, com 55 + DDD. Ex.: "5547999999999"
+  unidades: [
+    { id: "centro",    nome: "Centro",    detalhe: "R. Barão do Rio Branco", whatsapp: "5547991812030" },
+    { id: "via_verde", nome: "Via Verde", detalhe: "Parque Via Verde",       whatsapp: "5547988207891" },
+    { id: "barra",     nome: "Barra",     detalhe: "",                       whatsapp: "5547991095852" }
+  ],
+
+  // URL do Web App do Google Apps Script (ver apps-script/Code.gs).
+  // Vazio = modo demonstração: salva só no navegador (não serve para produção).
+  endpoint: "",
+
+  // Rastreamento (deixe vazio o que não usar)
+  metaPixelId: "",   // ex.: "123456789012345"
+  gtmId: "",         // ex.: "GTM-XXXXXXX"
+  ga4Id: "",         // ex.: "G-XXXXXXXXXX"
+
+  // Prefixo do código do prêmio: NOU-8F42K
+  codePrefix: "NOU",
+
+  // Validade padrão (cada prêmio pode sobrescrever com "validade")
+  validadePadrao: "Válido até 30/11/2026 nas unidades Nou Glúten.",
+
+  /* Prêmios (provisórios).
+     - id:          identificador fixo (não mude depois que a campanha estiver no ar)
+     - nome:        título do prêmio no resultado
+     - rotulo:      as 2 linhas que aparecem na fatia da roleta
+     - descricao:   frase do resultado
+     - percentual:  número (20) ou null se não for desconto
+     - validade:    opcional; senão usa validadePadrao
+     - peso:        chance relativa. Peso 20 sai o dobro de vezes que peso 10.
+     - mensagem:    texto do WhatsApp. Variáveis: {codigo} {nome} {premio} {unidade}
+  */
+  premios: [
+    {
+      id: "off20", nome: "20% OFF", rotulo: ["20% OFF", "até R$ 80"],
+      descricao: "20% de desconto em produtos até R$ 80.",
+      percentual: 20, peso: 10,
+      mensagem: "Olá! Girei a roleta da Nou Glúten e ganhei 20% de desconto em produtos até R$ 80. Meu código é {codigo} e vou usar na unidade {unidade}. Como faço para utilizar meu prêmio?"
+    },
+    {
+      id: "amostra_doce", nome: "AMOSTRA DE DOCE", rotulo: ["AMOSTRA", "de doce"],
+      descricao: "Ganhe uma amostra de um doce selecionado.",
+      percentual: null, peso: 20,
+      mensagem: "Olá! Girei a roleta da Nou Glúten e ganhei uma amostra de doce. Meu código é {codigo} e vou usar na unidade {unidade}. Como faço para retirar meu prêmio?"
+    },
+    {
+      id: "vale_cafe", nome: "VALE CAFÉ", rotulo: ["VALE", "café"],
+      descricao: "Ganhe um café.",
+      percentual: null, peso: 15,
+      mensagem: "Olá! Girei a roleta da Nou Glúten e ganhei um vale-café. Meu código é {codigo} e vou usar na unidade {unidade}. Como faço para retirar meu prêmio?"
+    },
+    {
+      id: "off10_ciabatta", nome: "10% OFF NA CIABATTA", rotulo: ["10% OFF", "na ciabatta"],
+      descricao: "10% de desconto em uma ciabatta selecionada.",
+      percentual: 10, peso: 20,
+      mensagem: "Olá! Girei a roleta da Nou Glúten e ganhei 10% de desconto na ciabatta. Meu código é {codigo} e vou usar na unidade {unidade}. Como faço para utilizar meu prêmio?"
+    },
+    {
+      id: "vale_doce", nome: "VALE DOCE", rotulo: ["VALE", "doce"],
+      descricao: "Ganhe uma amostra/porção de doce selecionado.",
+      percentual: null, peso: 15,
+      mensagem: "Olá! Girei a roleta da Nou Glúten e ganhei um vale-doce. Meu código é {codigo} e vou usar na unidade {unidade}. Como faço para retirar meu prêmio?"
+    },
+    {
+      id: "off10", nome: "10% OFF", rotulo: ["10% OFF", "na compra"],
+      descricao: "10% de desconto em uma compra.",
+      percentual: 10, peso: 20,
+      mensagem: "Olá! Girei a roleta da Nou Glúten e ganhei 10% de desconto em uma compra. Meu código é {codigo} e vou usar na unidade {unidade}. Como faço para utilizar meu prêmio?"
+    }
+  ]
+};
+</script>
+
+<style>
+:root{
+  --green:#3F8A3A;
+  --green-deep:#23452A;
+  --green-ink:#1A3420;
+  --cream:#F6EEDF;
+  --paper:#FCF8F0;
+  --sand:#EADCC4;
+  --terra:#B4613A;
+  --terra-deep:#8E4526;
+  --coffee:#4A2C1A;
+  --gold:#D6A447;
+  --ink:#2B2019;
+  --muted:#7A6555;
+  --radius:18px;
+  --wheel:clamp(250px, min(88vw, calc(100svh - 370px)), 440px);
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;
+  font-family:"Montserrat",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  color:var(--ink);
+  background:var(--cream);
+  -webkit-font-smoothing:antialiased;
+  -webkit-tap-highlight-color:transparent;
+  overflow-x:hidden;
+}
+/* textura de losangos germânicos, bem sutil */
+body::before{
+  content:"";position:fixed;inset:0;z-index:-2;
+  background:
+    radial-gradient(ellipse 80% 55% at 50% 62%, rgba(255,255,255,.75), transparent 70%),
+    repeating-linear-gradient(60deg, rgba(63,138,58,.055) 0 2px, transparent 2px 26px),
+    repeating-linear-gradient(-60deg, rgba(180,97,58,.055) 0 2px, transparent 2px 26px),
+    var(--cream);
+}
+button{font:inherit;cursor:pointer;border:0}
+img{max-width:100%}
+[hidden]{display:none!important}
+
+/* ---------- bandeirinhas ---------- */
+.bunting{
+  height:34px;width:100%;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='34' viewBox='0 0 96 34'%3E%3Cpath d='M0 3 Q48 9 96 3' stroke='%234A2C1A' stroke-width='1.2' fill='none'/%3E%3Cpath d='M4 4.6 L28 5.8 L16 26Z' fill='%233F8A3A'/%3E%3Cpath d='M36 6.2 L60 6.2 L48 30Z' fill='%23F9F2E3' stroke='%23D9C7A8' stroke-width='.8'/%3E%3Cpath d='M68 5.8 L92 4.6 L80 26Z' fill='%23B4613A'/%3E%3C/svg%3E");
+  background-repeat:repeat-x;background-position:center top;
+  padding-top:env(safe-area-inset-top,0px);
+  background-origin:content-box;
+  filter:drop-shadow(0 2px 2px rgba(74,44,26,.12));
+}
+
+/* ---------- palco único ---------- */
+.stage{
+  min-height:calc(100svh - 34px);
+  display:flex;flex-direction:column;align-items:center;
+  padding:4px 16px calc(48px + env(safe-area-inset-bottom,0px));
+  text-align:center;
+  max-width:1080px;margin:0 auto;
+  overflow-x:hidden;overflow-x:clip; /* o halo da roleta não pode alargar a tela */
+}
+.brand{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:2px}
+.brand img{height:72px;width:auto;display:block}
+.fest-tag{
+  display:flex;flex-direction:column;align-items:flex-start;line-height:1;
+  color:var(--green-deep);
+}
+.fest-tag .fraktur{font-family:"UnifrakturMaguntia",serif;font-size:22px;color:var(--terra-deep)}
+.fest-tag small{font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;margin-top:4px;color:var(--muted)}
+
+.copy{margin-top:8px}
+.kicker{
+  display:inline-flex;align-items:center;gap:8px;
+  margin:0;font-size:12.5px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--green);
+}
+.kicker svg{flex:none}
+h1{
+  margin:6px 0 0;font-weight:900;line-height:.98;letter-spacing:-.02em;
+  font-size:clamp(28px,8.4vw,52px);color:var(--coffee);text-transform:uppercase;
+}
+h1 em{font-style:normal;color:var(--terra);display:block}
+.sub{margin:10px auto 0;max-width:30ch;font-size:14px;line-height:1.4;font-weight:500;color:var(--muted)}
+
+/* ---------- roleta ---------- */
+.wheel-area{position:relative;margin:16px auto 0;width:var(--wheel);height:var(--wheel);flex:none}
+.wheel-area::before{ /* halo */
+  content:"";position:absolute;inset:-9%;border-radius:50%;
+  background:radial-gradient(circle, rgba(214,164,71,.28), rgba(214,164,71,0) 68%);
+  z-index:-1;transition:opacity .4s;opacity:.6;
+}
+.wheel-area.ready::before{opacity:1;animation:halo 1.6s ease-in-out infinite}
+@keyframes halo{50%{transform:scale(1.04)}}
+/* o recorte circular impede que a caixa girada alargue a página no celular */
+.wheel-clip{position:absolute;inset:0;border-radius:50%;overflow:hidden;box-shadow:0 14px 26px rgba(35,69,42,.3)}
+.wheel{width:100%;height:100%;display:block;will-change:transform}
+.wheel text{font-family:"Montserrat",sans-serif;text-anchor:middle;dominant-baseline:middle}
+.pointer{
+  position:absolute;left:50%;top:-5%;width:15%;transform:translateX(-50%);
+  transform-origin:50% 22%;z-index:3;filter:drop-shadow(0 3px 3px rgba(0,0,0,.25));pointer-events:none;
+}
+.pointer.tick{animation:tick .14s ease-out}
+@keyframes tick{40%{transform:translateX(-50%) rotate(-16deg)}}
+.hub{
+  position:absolute;left:50%;top:50%;width:27%;height:27%;transform:translate(-50%,-50%);
+  border-radius:50%;z-index:2;color:var(--paper);
+  background:
+    radial-gradient(circle, var(--terra) 0 31%, var(--paper) 31% 43%, var(--green-deep) 43% 62%, var(--paper) 62% 72%, var(--terra-deep) 72% 100%);
+  box-shadow:0 6px 14px rgba(0,0,0,.28), inset 0 -4px 0 rgba(0,0,0,.18);
+  display:grid;place-items:center;
+  font-weight:900;font-size:clamp(10px,2.9vw,15px);letter-spacing:.04em;
+  transition:transform .15s;
+}
+.hub span{background:var(--terra);padding:3px 6px;border-radius:6px;line-height:1.05;text-shadow:0 1px 0 rgba(0,0,0,.25)}
+.hub:active{transform:translate(-50%,-50%) scale(.94)}
+.wheel-area.ready .hub{animation:pulse 1.2s ease-in-out infinite}
+@keyframes pulse{50%{transform:translate(-50%,-50%) scale(1.08)}}
+.hub:disabled{cursor:default;animation:none}
+
+/* ---------- CTA ---------- */
+.cta{
+  position:relative;display:flex;align-items:center;justify-content:center;gap:10px;
+  width:100%;max-width:420px;min-height:60px;margin:22px auto 0;padding:14px 22px;
+  border-radius:16px;
+  background:linear-gradient(180deg,#C46E44,var(--terra) 55%,var(--terra-deep));
+  color:#fff;font-weight:900;font-size:17px;letter-spacing:.06em;text-transform:uppercase;
+  box-shadow:0 6px 0 #6E3319, 0 14px 24px rgba(142,69,38,.35);
+  transition:transform .1s, box-shadow .1s, filter .2s;
+}
+.cta:active{transform:translateY(4px);box-shadow:0 2px 0 #6E3319, 0 6px 12px rgba(142,69,38,.3)}
+.cta:disabled{filter:saturate(.4) brightness(1.05);cursor:default}
+.cta.shine::after{
+  content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  background:linear-gradient(110deg,transparent 30%,rgba(255,255,255,.35) 45%,transparent 60%);
+  background-size:250% 100%;animation:shine 2.6s ease-in-out infinite;
+}
+@keyframes shine{0%{background-position:130% 0}60%,100%{background-position:-60% 0}}
+.fine{margin:12px 0 0;font-size:11px;color:var(--muted);font-weight:500;line-height:1.4}
+
+/* ---------- modais ---------- */
+.overlay{
+  position:fixed;inset:0;z-index:50;display:flex;align-items:flex-end;justify-content:center;
+  background:rgba(26,52,32,.55);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);
+  opacity:0;transition:opacity .25s;
+}
+.overlay.open{opacity:1}
+.sheet{
+  position:relative;width:100%;max-width:460px;
+  background:var(--paper);border-radius:24px 24px 0 0;
+  padding:26px 20px calc(22px + env(safe-area-inset-bottom,0px));
+  box-shadow:0 -10px 40px rgba(0,0,0,.25);
+  transform:translateY(100%);transition:transform .32s cubic-bezier(.2,.9,.3,1.1);
+  max-height:94svh;overflow:auto;text-align:center;
+}
+.overlay.open .sheet{transform:none}
+.overlay.center{align-items:center;padding:16px}
+.overlay.center .sheet{border-radius:24px;transform:scale(.85);opacity:0;transition:transform .35s cubic-bezier(.2,1.4,.4,1),opacity .2s}
+.overlay.center.open .sheet{transform:none;opacity:1}
+.sheet::before{ /* faixa de bandeirinhas no topo do card */
+  content:"";position:absolute;left:0;right:0;top:0;height:22px;border-radius:24px 24px 0 0;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='22' viewBox='0 0 48 22'%3E%3Cpath d='M2 0 L14 0 L8 12Z' fill='%233F8A3A'/%3E%3Cpath d='M18 0 L30 0 L24 12Z' fill='%23D6A447'/%3E%3Cpath d='M34 0 L46 0 L40 12Z' fill='%23B4613A'/%3E%3C/svg%3E");
+  background-repeat:repeat-x;opacity:.9;
+}
+.close{
+  position:absolute;right:10px;top:16px;width:40px;height:40px;border-radius:50%;
+  background:transparent;color:var(--muted);font-size:26px;line-height:1;
+}
+.sheet h2{margin:8px 0 4px;font-size:22px;font-weight:900;color:var(--coffee);letter-spacing:-.01em}
+.sheet .lead{margin:0 0 18px;color:var(--muted);font-size:14px;font-weight:500}
+
+.field{display:block;text-align:left;margin-bottom:12px}
+.field span{display:block;font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--green-deep);margin:0 0 6px 2px}
+.field input{
+  width:100%;height:56px;padding:0 16px;border-radius:14px;
+  border:2px solid var(--sand);background:#fff;color:var(--ink);
+  font:600 17px/1 "Montserrat",sans-serif;outline:none;transition:border-color .15s, box-shadow .15s;
+}
+.field input:focus{border-color:var(--green);box-shadow:0 0 0 4px rgba(63,138,58,.15)}
+.field.err input{border-color:#C0392B}
+.field .msg{display:block;min-height:0;font-size:12px;color:#B03A2E;font-weight:600;margin:5px 0 0 2px}
+.check{display:flex;gap:10px;align-items:flex-start;text-align:left;font-size:13px;line-height:1.35;color:var(--muted);font-weight:500;margin:4px 0 4px;cursor:pointer}
+.check input{width:20px;height:20px;margin:0;flex:none;accent-color:var(--green)}
+.privacy{font-size:11px;color:var(--muted);margin:12px 0 0}
+.form-error{color:#B03A2E;font-size:13px;font-weight:600;margin:10px 0 0}
+
+/* resultado */
+.result .confetti-emoji{font-size:46px;line-height:1;margin-top:10px}
+.result .won{margin:6px 0 0;font-size:15px;font-weight:900;letter-spacing:.2em;color:var(--green)}
+.result .prize{margin:4px 0 0;font-size:clamp(34px,10vw,46px);line-height:1;font-weight:900;color:var(--terra);text-transform:uppercase;letter-spacing:-.02em}
+.result .desc{margin:10px auto 0;max-width:28ch;font-size:16px;font-weight:700;color:var(--coffee);line-height:1.35}
+.result .valid{margin:6px 0 0;font-size:12px;color:var(--muted);font-weight:500}
+.guarantee{display:inline-flex;align-items:center;gap:6px;margin:16px 0 0;font-size:14px;font-weight:800;color:var(--green-deep)}
+.code{
+  margin:10px auto 0;padding:12px 14px;border:2px dashed var(--terra);border-radius:14px;background:#fff;
+  display:flex;flex-direction:column;gap:2px;max-width:300px;cursor:copy;
+}
+.code small{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.code strong{font-size:26px;letter-spacing:.12em;color:var(--coffee);font-weight:900}
+.code .copied{font-size:11px;color:var(--green);font-weight:700;height:13px}
+.wa{
+  display:flex;align-items:center;justify-content:center;gap:10px;
+  width:100%;min-height:64px;margin:18px 0 0;padding:14px 18px;border-radius:16px;
+  background:linear-gradient(180deg,#4DA144,var(--green) 55%,#2F7130);color:#fff;text-decoration:none;
+  font-weight:900;font-size:17px;letter-spacing:.05em;text-transform:uppercase;
+  box-shadow:0 6px 0 #1F4D21, 0 14px 26px rgba(47,113,48,.38);
+  animation:nudge 2.4s ease-in-out 1.2s infinite;
+}
+.wa:active{transform:translateY(4px);box-shadow:0 2px 0 #1F4D21}
+@keyframes nudge{0%,86%,100%{transform:none}90%{transform:scale(1.035)}94%{transform:scale(.99)}}
+.wa svg{flex:none}
+/* escolha de unidade */
+.units{margin-top:16px;animation:rise .28s ease-out}
+@keyframes rise{from{opacity:0;transform:translateY(8px)}}
+.units-title{margin:0 0 10px;font-size:15px;font-weight:900;color:var(--coffee)}
+.unit{
+  display:flex;align-items:center;gap:12px;width:100%;min-height:62px;margin:0 0 10px;padding:10px 16px;
+  border-radius:14px;text-decoration:none;text-align:left;color:#fff;
+  background:linear-gradient(180deg,#4DA144,var(--green) 55%,#2F7130);
+  box-shadow:0 4px 0 #1F4D21, 0 10px 18px rgba(47,113,48,.28);
+}
+.unit:active{transform:translateY(3px);box-shadow:0 1px 0 #1F4D21}
+.unit svg{flex:none}
+.unit b{display:block;font-size:17px;font-weight:900;letter-spacing:.03em;text-transform:uppercase}
+.unit small{display:block;font-size:12px;font-weight:600;opacity:.85}
+.unit .go{margin-left:auto;font-size:22px;font-weight:900;opacity:.9}
+.hint{font-size:12px;color:var(--muted);margin:10px 0 0;font-weight:500}
+
+#confetti{position:fixed;inset:0;pointer-events:none;z-index:60}
+
+/* selo de amostra (só aparece sem endpoint configurado) */
+.demo-bar{
+  position:fixed;left:50%;bottom:calc(8px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:40;
+  display:flex;align-items:center;gap:8px;padding:5px 5px 5px 12px;border-radius:999px;
+  background:rgba(43,32,25,.86);color:#F6EEDF;font-size:11px;font-weight:700;white-space:nowrap;
+  box-shadow:0 4px 14px rgba(0,0,0,.2);
+}
+.demo-bar button{background:#F6EEDF;color:var(--coffee);border-radius:999px;padding:6px 10px;font-size:11px;font-weight:800}
+
+/* spinner */
+.spin{width:20px;height:20px;border-radius:50%;border:3px solid rgba(255,255,255,.4);border-top-color:#fff;animation:rot .8s linear infinite}
+@keyframes rot{to{transform:rotate(360deg)}}
+
+/* telas baixas: compacta o topo */
+@media (max-height:700px){
+  .brand img{height:50px}
+  .sub{display:none}
+  .wheel-area{margin-top:12px}
+  :root{--wheel:clamp(240px, min(86vw, calc(100svh - 318px)), 440px)}
+}
+
+/* desktop: texto à esquerda, roleta à direita */
+@media (min-width:900px){
+  .stage{align-items:stretch;text-align:left;padding-top:16px}
+  .brand{justify-content:flex-start}
+  .copy{
+    flex:1;display:grid;grid-template-columns:1fr auto;column-gap:56px;
+    align-content:center;margin-top:0;
+  }
+  .copy > *{grid-column:1}
+  .kicker{justify-self:start}
+  .sub{margin-left:0;font-size:17px}
+  .cta{margin-left:0}
+  .wheel-col{grid-column:2;grid-row:1 / span 5;align-self:center}
+  :root{--wheel:min(460px, calc(100vh - 170px))}
+  .overlay{align-items:center}
+  .sheet{border-radius:24px;transform:translateY(30px);opacity:0;transition:transform .3s, opacity .2s}
+  .overlay.open .sheet{opacity:1}
+}
+@media (prefers-reduced-motion:reduce){
+  *{animation:none!important}
+}
+</style>
+</head>
+<body>
+
+<div class="bunting" aria-hidden="true"></div>
+
+<main class="stage">
+  <div class="brand">
+    <img src="assets/logo-nou-gluten.png" alt="Nou Glúten Café" width="440" height="545">
+    <div class="fest-tag" aria-label="Especial Schützenfest 2026">
+      <span class="fraktur">Schützenfest</span>
+      <small>Especial · 11 a 22 de nov</small>
+    </div>
+  </div>
+
+  <div class="copy">
+    <p class="kicker" id="kicker">
+      <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="8" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="8" cy="8" r="1.4" fill="currentColor"/></svg>
+      <span id="kickerText">Entrou no clima da Schützen?</span>
+    </p>
+    <h1 id="headline">Gire a roleta e <em>ganhe um prêmio!</em></h1>
+    <p class="sub" id="sub">Cadastre-se, gire e descubra na hora o que a Nou Glúten preparou para você.</p>
+
+    <div class="wheel-col">
+      <div class="wheel-area" id="wheelArea">
+        <svg class="pointer" id="pointer" viewBox="0 0 60 84" aria-hidden="true">
+          <path d="M30 82 L9 30 A22 22 0 1 1 51 30 Z" fill="#8E4526"/>
+          <path d="M30 76 L13 30 A18 18 0 1 1 47 30 Z" fill="#B4613A"/>
+          <circle cx="30" cy="23" r="10" fill="#FCF8F0"/>
+          <circle cx="30" cy="23" r="6" fill="#3F8A3A"/>
+          <circle cx="30" cy="23" r="2.4" fill="#FCF8F0"/>
+        </svg>
+        <div class="wheel-clip"><svg class="wheel" id="wheel" viewBox="-200 -200 400 400" role="img" aria-label="Roleta de prêmios"></svg></div>
+        <button class="hub" id="hub" type="button" aria-label="Girar a roleta"><span id="hubText">GIRAR</span></button>
+      </div>
+    </div>
+
+    <button class="cta shine" id="cta" type="button">Quero girar a roleta</button>
+    <p class="fine">1 participação por WhatsApp · prêmio garantido para quem girar</p>
+  </div>
+</main>
+
+<!-- Cadastro -->
+<div class="overlay" id="formModal" role="dialog" aria-modal="true" aria-labelledby="formTitle" hidden>
+  <div class="sheet">
+    <button class="close" type="button" data-close aria-label="Fechar">×</button>
+    <h2 id="formTitle">Antes de girar, deixe seu contato!</h2>
+    <p class="lead">Leva 10 segundos. Seu prêmio sai na hora.</p>
+    <form id="leadForm" novalidate>
+      <label class="field" id="fName">
+        <span>Nome</span>
+        <input name="nome" id="nome" type="text" autocomplete="given-name" autocapitalize="words" placeholder="Seu nome" maxlength="60" required>
+        <small class="msg"></small>
+      </label>
+      <label class="field" id="fPhone">
+        <span>WhatsApp</span>
+        <input name="whatsapp" id="whatsapp" type="tel" inputmode="numeric" autocomplete="tel-national" placeholder="(47) 99999-9999" maxlength="16" required>
+        <small class="msg"></small>
+      </label>
+      <label class="check">
+        <input type="checkbox" id="optin" name="optin">
+        <span>Aceito receber novidades e ofertas da Nou Glúten pelo WhatsApp.</span>
+      </label>
+      <button class="cta" id="submitBtn" type="submit">Liberar minha roleta</button>
+      <p class="form-error" id="formError" hidden></p>
+      <p class="privacy">Usamos seu contato só para entregar seu prêmio.</p>
+    </form>
+  </div>
+</div>
+
+<!-- Resultado / já participou -->
+<div class="overlay center" id="resultModal" role="dialog" aria-modal="true" aria-labelledby="resTitle" hidden>
+  <div class="sheet result">
+    <button class="close" type="button" data-close aria-label="Fechar">×</button>
+    <div class="confetti-emoji" id="resEmoji" aria-hidden="true">🎉</div>
+    <p class="won" id="resTitle">VOCÊ GANHOU!</p>
+    <h3 class="prize" id="resPrize">20% OFF</h3>
+    <p class="desc" id="resDesc"></p>
+    <p class="valid" id="resValid"></p>
+    <div class="guarantee" id="resGuarantee">
+      <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="11" fill="#3F8A3A"/><path d="M7 12.5l3.2 3.2L17 9" stroke="#fff" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Seu prêmio está garantido!
+    </div>
+    <div class="code" id="resCode" role="button" tabindex="0" aria-label="Copiar código do prêmio">
+      <small>Código do seu prêmio</small>
+      <strong id="resCodeText">NOU-XXXXX</strong>
+      <span class="copied" id="copied"></span>
+    </div>
+    <button class="wa" id="waBtn" type="button">
+      <svg width="26" height="26" viewBox="0 0 32 32" aria-hidden="true"><use href="#wa-icon"/></svg>
+      Quero usar meu prêmio
+    </button>
+    <div class="units" id="unitPick" hidden>
+      <p class="units-title">Em qual unidade você vai usar?</p>
+      <div id="unitList"></div>
+    </div>
+    <p class="hint" id="resHint">A mensagem já vai pronta com seu código.</p>
+  </div>
+</div>
+
+<canvas id="confetti" aria-hidden="true"></canvas>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="wa-icon" viewBox="0 0 32 32"><path fill="#fff" d="M16 3C8.8 3 3 8.7 3 15.8c0 2.5.7 4.9 2 7L3 29l6.4-2c2 1.1 4.3 1.7 6.6 1.7 7.2 0 13-5.7 13-12.8S23.2 3 16 3zm0 23.4c-2.1 0-4.1-.6-5.9-1.7l-.4-.3-3.8 1.2 1.2-3.7-.3-.4c-1.2-1.8-1.9-3.9-1.9-6 0-5.9 4.9-10.7 11-10.7s11 4.8 11 10.7-4.9 10.9-10.9 10.9zm6-8c-.3-.2-2-1-2.3-1.1-.3-.1-.5-.2-.8.2-.2.3-.9 1.1-1.1 1.3-.2.2-.4.2-.7.1-.3-.2-1.4-.5-2.7-1.7-1-.9-1.7-2-1.9-2.3-.2-.3 0-.5.1-.7l.5-.6c.2-.2.2-.4.3-.6.1-.2 0-.5 0-.6l-1-2.5c-.3-.7-.6-.6-.8-.6h-.7c-.2 0-.6.1-.9.4-.3.3-1.2 1.2-1.2 2.9s1.2 3.4 1.4 3.6c.2.2 2.4 3.7 5.9 5.1 2.9 1.1 3.5.9 4.1.9.6-.1 2-.8 2.3-1.6.3-.8.3-1.5.2-1.6-.1-.2-.4-.3-.7-.4z"/></symbol>
+</svg>
+
+<script>
+(function(){
+"use strict";
+var CFG = window.ROLETA_CONFIG;
+var PRIZES = CFG.premios;
+var LS_KEY = "ng_roleta_v1";        // participações salvas neste aparelho
+var $ = function(id){ return document.getElementById(id); };
+
+/* ---------------- storage seguro ---------------- */
+function lsGet(k){ try{ return JSON.parse(localStorage.getItem(k)); }catch(e){ return null; } }
+function lsSet(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+function ssGet(k){ try{ return JSON.parse(sessionStorage.getItem(k)); }catch(e){ return null; } }
+function ssSet(k,v){ try{ sessionStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+
+if (/[?&]reset=1/.test(location.search)) { try{ localStorage.removeItem(LS_KEY); }catch(e){} }
+
+/* ---------------- UTMs / origem ---------------- */
+var UTM_KEYS = ["utm_source","utm_medium","utm_campaign","utm_content","utm_term","fbclid","gclid"];
+var attribution = (function(){
+  var qs = new URLSearchParams(location.search), a = {}, any = false;
+  UTM_KEYS.forEach(function(k){ var v = qs.get(k); if (v){ a[k] = v.slice(0,200); any = true; } });
+  var saved = ssGet("ng_attr");
+  if (!any && saved) return saved;
+  var ref = "";
+  try{ ref = document.referrer ? new URL(document.referrer).hostname : ""; }catch(e){}
+  a.origem = a.utm_source ? (a.utm_source + (a.utm_medium ? " / " + a.utm_medium : "")) : (ref || "direto");
+  a.pagina = location.origin + location.pathname;
+  ssSet("ng_attr", a);
+  return a;
+})();
+
+/* ---------------- tracking ---------------- */
+(function loadTrackers(){
+  if (CFG.gtmId){
+    (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer',CFG.gtmId);
+  }
+  if (CFG.ga4Id){
+    var s = document.createElement("script"); s.async = true; s.src = "https://www.googletagmanager.com/gtag/js?id=" + CFG.ga4Id; document.head.appendChild(s);
+    window.dataLayer = window.dataLayer || []; window.gtag = function(){ dataLayer.push(arguments); };
+    gtag("js", new Date()); gtag("config", CFG.ga4Id, { send_page_view:false });
+  }
+  if (CFG.metaPixelId){
+    !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
+    fbq("init", CFG.metaPixelId);
+  }
+})();
+
+var FB_STANDARD = { page_view:"PageView", lead_submitted:"Lead", whatsapp_clicked:"Contact" };
+function track(name, params){
+  var p = Object.assign({}, attribution, params || {});
+  delete p.pagina;
+  window.dataLayer = window.dataLayer || [];
+  window.dataLayer.push(Object.assign({ event:name }, p));
+  if (window.fbq){
+    if (FB_STANDARD[name]) fbq("track", FB_STANDARD[name], p.prize_name ? { content_name:p.prize_name } : {});
+    if (name !== "page_view") fbq("trackCustom", name, p);
+  }
+  if (window.gtag && CFG.ga4Id) gtag("event", name, p);
+  if (/[?&]debug=1/.test(location.search)) console.log("[track]", name, p);
+}
+
+/* ---------------- backend (Apps Script ou modo demo) ---------------- */
+var api = {
+  call: function(payload){
+    if (!CFG.endpoint) return Promise.resolve(demoBackend(payload));
+    return fetch(CFG.endpoint, {
+      method:"POST", headers:{ "Content-Type":"text/plain;charset=utf-8" },
+      body: JSON.stringify(payload)
+    }).then(function(r){ return r.json(); });
+  },
+  beacon: function(payload){
+    if (!CFG.endpoint){ demoBackend(payload); return; }
+    var body = JSON.stringify(payload);
+    if (navigator.sendBeacon && navigator.sendBeacon(CFG.endpoint, new Blob([body], { type:"text/plain;charset=utf-8" }))) return;
+    fetch(CFG.endpoint, { method:"POST", headers:{ "Content-Type":"text/plain;charset=utf-8" }, body:body, keepalive:true }).catch(function(){});
+  }
+};
+// Modo demonstração: guarda as participações só neste navegador.
+function demoBackend(p){
+  var db = lsGet(LS_KEY) || {}, row = db[p.whatsapp];
+  if (p.action === "register"){
+    if (row && row.prizeId) return { ok:true, status:"exists", prizeId:row.prizeId, prizeName:row.prizeName, code:row.code, nome:row.nome };
+    if (!row){ db[p.whatsapp] = { nome:p.nome, ts:Date.now() }; lsSet(LS_KEY, db); return { ok:true, status:"new" }; }
+    return { ok:true, status:"pending" };
+  }
+  if (p.action === "prize"){
+    if (row && row.prizeId) return { ok:true, status:"exists", prizeId:row.prizeId, prizeName:row.prizeName, code:row.code };
+    db[p.whatsapp] = Object.assign(row || {}, { prizeId:p.prizeId, prizeName:p.prizeName, code:p.code });
+    lsSet(LS_KEY, db); return { ok:true, status:"saved" };
+  }
+  if (p.action === "click"){ if (row){ row.clicked = true; lsSet(LS_KEY, db); } return { ok:true }; }
+  return { ok:false };
+}
+
+/* ---------------- roleta (SVG gerado do CONFIG) ---------------- */
+var N = PRIZES.length, SEG = 360 / N;
+var FILL = ["#3F8A3A", "#FCF8F0", "#B4613A", "#23452A", "#F3E3C8", "#8E4526"];
+var TEXT = ["#FCF8F0", "#4A2C1A", "#FCF8F0", "#FCF8F0", "#4A2C1A", "#FCF8F0"];
+function polar(r, deg){ var a = (deg - 90) * Math.PI / 180; return [r * Math.cos(a), r * Math.sin(a)]; }
+function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" }[c]; }); }
+
+(function buildWheel(){
+  var R = 178, svg = [];
+  svg.push('<circle r="198" fill="#4A2C1A"/>');
+  svg.push('<circle r="191" fill="#23452A"/>');
+  svg.push('<circle r="182" fill="#FCF8F0"/>');
+  svg.push('<g id="disc">');
+  PRIZES.forEach(function(p, i){
+    var a0 = i * SEG, a1 = a0 + SEG, s = polar(R, a0), e = polar(R, a1);
+    svg.push('<path d="M0 0 L' + s[0].toFixed(2) + ' ' + s[1].toFixed(2) + ' A' + R + ' ' + R + ' 0 ' + (SEG > 180 ? 1 : 0) + ' 1 ' + e[0].toFixed(2) + ' ' + e[1].toFixed(2) + ' Z" fill="' + FILL[i % FILL.length] + '"/>');
+  });
+  // anéis de alvo sutis sobre as fatias
+  [150, 104].forEach(function(r){ svg.push('<circle r="' + r + '" fill="none" stroke="rgba(255,255,255,.16)" stroke-width="1.5"/>'); });
+  // divisórias
+  PRIZES.forEach(function(p, i){
+    var e = polar(R, i * SEG);
+    svg.push('<line x1="0" y1="0" x2="' + e[0].toFixed(2) + '" y2="' + e[1].toFixed(2) + '" stroke="#FCF8F0" stroke-width="3"/>');
+  });
+  // rótulos
+  PRIZES.forEach(function(p, i){
+    var c = TEXT[i % TEXT.length], l = p.rotulo || [p.nome, ""];
+    var big = l[0].length > 7 ? 21 : 25;
+    svg.push('<g transform="rotate(' + (i * SEG + SEG / 2) + ')">' +
+      '<text y="-130" font-size="' + big + '" font-weight="900" fill="' + c + '" letter-spacing="-.5">' + esc(l[0]) + '</text>' +
+      '<text y="-104" font-size="14" font-weight="700" fill="' + c + '" opacity=".92">' + esc(l[1] || "") + '</text>' +
+      '<path d="M0 -84 l5 6 l-5 6 l-5 -6z" fill="' + c + '" opacity=".55"/>' +
+    '</g>');
+  });
+  svg.push('</g>');
+  // pinos dourados na borda (estilo alvo de tiro, sem luzes de cassino)
+  for (var k = 0; k < N * 3; k++){
+    var pt = polar(186.5, k * (360 / (N * 3)));
+    svg.push('<circle cx="' + pt[0].toFixed(2) + '" cy="' + pt[1].toFixed(2) + '" r="3.2" fill="#D6A447"/>');
+  }
+  $("wheel").innerHTML = svg.join("");
+})();
+
+var wheelEl = $("wheel"), pointer = $("pointer"), rot = 0, idleRaf = null, lastIdle = 0, spinning = false;
+function setRot(deg){ rot = deg; wheelEl.style.transform = "rotate(" + deg + "deg)"; }
+function idle(t){
+  if (lastIdle) setRot(rot + (t - lastIdle) * 0.006);
+  lastIdle = t; idleRaf = requestAnimationFrame(idle);
+}
+if (!matchMedia("(prefers-reduced-motion: reduce)").matches) idleRaf = requestAnimationFrame(idle);
+
+function pickPrize(){
+  var total = PRIZES.reduce(function(s, p){ return s + Math.max(0, +p.peso || 0); }, 0), r = Math.random() * total;
+  for (var i = 0; i < N; i++){ r -= Math.max(0, +PRIZES[i].peso || 0); if (r < 0) return i; }
+  return N - 1;
+}
+function spinTo(index){
+  return new Promise(function(resolve){
+    cancelAnimationFrame(idleRaf); idleRaf = null;
+    var reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    var start = rot, center = index * SEG + SEG / 2, jitter = (Math.random() - .5) * SEG * .62;
+    var base = ((-(center + jitter) - start) % 360 + 360) % 360;
+    var end = start + base + 360 * (reduce ? 2 : 7);
+    var dur = reduce ? 1800 : 6200, t0 = null, lastSeg = Math.floor((start + SEG / 2) / SEG), done = false;
+    function ease(t){ return 1 - Math.pow(1 - t, 4); }
+    function finish(){ if (done) return; done = true; setRot(end); resolve(); }
+    // garante o fim mesmo se o navegador pausar as animações (aba em segundo plano, webview)
+    setTimeout(finish, dur + 400);
+    function frame(t){
+      if (done) return;
+      if (!t0) t0 = t;
+      var k = Math.min(1, (t - t0) / dur), d = start + (end - start) * ease(k);
+      setRot(d);
+      var sg = Math.floor((d + SEG / 2) / SEG);
+      if (sg !== lastSeg){
+        lastSeg = sg;
+        pointer.classList.remove("tick"); void pointer.offsetWidth; pointer.classList.add("tick");
+        if (k > .55 && navigator.vibrate) try{ navigator.vibrate(6); }catch(e){}
+      }
+      if (k < 1) requestAnimationFrame(frame); else finish();
+    }
+    requestAnimationFrame(frame);
+  });
+}
+
+/* ---------------- estado ---------------- */
+var state = { stage:"intro", lead:null, result:null };
+var cta = $("cta"), hub = $("hub"), wheelArea = $("wheelArea");
+
+function genCode(){
+  var A = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789", out = "", buf = new Uint32Array(5);
+  (window.crypto || window.msCrypto).getRandomValues(buf);
+  for (var i = 0; i < 5; i++) out += A[buf[i] % A.length];
+  return (CFG.codePrefix || "NOU") + "-" + out;
+}
+function firstName(n){ return (n || "").trim().split(/\s+/)[0] || ""; }
+function prizeById(id){ for (var i = 0; i < N; i++) if (PRIZES[i].id === id) return PRIZES[i]; return null; }
+function fillTpl(t, vars){ return t.replace(/\{(\w+)\}/g, function(m, k){ return vars[k] != null ? vars[k] : m; }); }
+function waLink(prize, code, nome, unit){
+  var tpl = (prize && prize.mensagem) || "Olá! Girei a roleta da Nou Glúten e ganhei {premio}. Meu código é {codigo} e vou usar na unidade {unidade}. Como faço para utilizar meu prêmio?";
+  var msg = fillTpl(tpl, { codigo:code, nome:firstName(nome), premio:prize ? prize.nome : "", unidade:unit.nome });
+  return "https://wa.me/" + String(unit.whatsapp).replace(/\D/g, "") + "?text=" + encodeURIComponent(msg);
+}
+
+function setReady(){
+  state.stage = "ready";
+  $("kickerText").textContent = "É sua vez" + (state.lead && state.lead.nome ? ", " + firstName(state.lead.nome) : "") + "!";
+  $("headline").innerHTML = "Gire e descubra <em>seu prêmio.</em>";
+  $("sub").textContent = "Toque em girar. Seu prêmio aparece na hora.";
+  cta.textContent = "Girar a roleta";
+  wheelArea.classList.add("ready");
+}
+function setDone(){
+  state.stage = "done";
+  wheelArea.classList.remove("ready");
+  $("kickerText").textContent = "Prêmio garantido!";
+  $("headline").innerHTML = "Agora é só <em>usar seu prêmio.</em>";
+  $("sub").textContent = "Fale com a Nou Glúten no WhatsApp com seu código.";
+  cta.disabled = false; hub.disabled = true;
+  cta.textContent = "Ver meu prêmio";
+}
+
+/* ---------------- modais ---------------- */
+var lastFocus = null;
+function openModal(el){
+  lastFocus = document.activeElement;
+  el.hidden = false; requestAnimationFrame(function(){ el.classList.add("open"); });
+  document.body.style.overflow = "hidden";
+}
+function closeModal(el){
+  el.classList.remove("open");
+  setTimeout(function(){ el.hidden = true; }, 260);
+  document.body.style.overflow = "";
+  if (lastFocus && lastFocus.focus) lastFocus.focus();
+}
+document.querySelectorAll(".overlay").forEach(function(o){
+  o.addEventListener("click", function(e){ if (e.target === o || e.target.hasAttribute("data-close")) closeModal(o); });
+});
+document.addEventListener("keydown", function(e){
+  if (e.key === "Escape") document.querySelectorAll(".overlay.open").forEach(closeModal);
+});
+
+function showResult(prize, code, opts){
+  opts = opts || {};
+  var nameFallback = opts.prizeName || "";
+  $("resEmoji").textContent = opts.already ? "🎯" : "🎉";
+  $("resTitle").textContent = opts.already ? "VOCÊ JÁ GIROU A ROLETA!" : "VOCÊ GANHOU!";
+  $("resPrize").textContent = prize ? prize.nome : nameFallback;
+  $("resDesc").textContent = prize ? (opts.already ? "Seu prêmio: " : "") + prize.descricao : "";
+  $("resValid").textContent = prize ? (prize.validade || CFG.validadePadrao) : CFG.validadePadrao;
+  $("resGuarantee").lastChild.textContent = opts.already ? " Ele continua garantido!" : " Seu prêmio está garantido!";
+  $("resCodeText").textContent = code;
+  $("copied").textContent = "";
+  state.result = { prize:prize, code:code, prizeName:prize ? prize.nome : nameFallback };
+  buildUnits(prize || { nome:nameFallback }, code);
+  $("waBtn").hidden = false; $("unitPick").hidden = true;
+  $("resHint").textContent = "A mensagem já vai pronta com seu código.";
+  openModal($("resultModal"));
+  if (!opts.already) confetti();
+}
+
+/* ---------------- formulário ---------------- */
+var phoneInput = $("whatsapp");
+function digits(s){ return String(s || "").replace(/\D/g, ""); }
+function maskPhone(v){
+  var d = digits(v);
+  if (d.length > 11 && d.indexOf("55") === 0) d = d.slice(2);
+  d = d.slice(0, 11);
+  if (d.length <= 2) return d.length ? "(" + d : "";
+  if (d.length <= 6) return "(" + d.slice(0, 2) + ") " + d.slice(2);
+  if (d.length <= 10) return "(" + d.slice(0, 2) + ") " + d.slice(2, 6) + "-" + d.slice(6);
+  return "(" + d.slice(0, 2) + ") " + d.slice(2, 7) + "-" + d.slice(7);
+}
+function normalizePhone(v){
+  var d = digits(v);
+  if (d.length > 11 && d.indexOf("55") === 0) d = d.slice(2);
+  if (d.length < 10 || d.length > 11) return null;
+  if (+d.slice(0, 2) < 11) return null;
+  if (d.length === 11 && d[2] !== "9") return null;
+  if (/^(\d)\1+$/.test(d.slice(2))) return null;
+  return "55" + d;
+}
+phoneInput.addEventListener("input", function(){ phoneInput.value = maskPhone(phoneInput.value); setErr("fPhone", ""); });
+$("nome").addEventListener("input", function(){ setErr("fName", ""); });
+function setErr(id, msg){ var f = $(id); f.classList.toggle("err", !!msg); f.querySelector(".msg").textContent = msg; }
+
+function openForm(){
+  openModal($("formModal"));
+  track("form_opened");
+  setTimeout(function(){ $("nome").focus(); }, 350);
+}
+
+$("leadForm").addEventListener("submit", function(e){
+  e.preventDefault();
+  var nome = $("nome").value.trim().replace(/\s+/g, " "), phone = normalizePhone(phoneInput.value), ok = true;
+  if (nome.length < 2){ setErr("fName", "Digite seu nome."); ok = false; }
+  if (!phone){ setErr("fPhone", "Confira o número com DDD."); ok = false; }
+  if (!ok) return;
+  var btn = $("submitBtn"), err = $("formError");
+  btn.disabled = true; btn.innerHTML = '<span class="spin"></span>'; err.hidden = true;
+  state.lead = { nome:nome, whatsapp:phone, optin:$("optin").checked };
+  api.call(Object.assign({ action:"register" }, state.lead, attribution, { userAgent:navigator.userAgent.slice(0, 180) }))
+    .then(function(res){
+      if (!res || !res.ok) throw new Error(res && res.error || "erro");
+      track("lead_submitted", { new_lead: res.status === "new" });
+      closeModal($("formModal"));
+      if (res.status === "exists"){
+        track("already_participated", { prize_name:res.prizeName, prize_id:res.prizeId, prize_code:res.code });
+        rememberDevice(res.prizeId, res.prizeName, res.code);
+        setDone();
+        setTimeout(function(){ showResult(prizeById(res.prizeId), res.code, { already:true, prizeName:res.prizeName }); }, 280);
+      } else {
+        setReady();
+        wheelArea.scrollIntoView({ behavior:"smooth", block:"center" });
+      }
+    })
+    .catch(function(){
+      err.textContent = "Não conseguimos registrar agora. Confira sua internet e tente de novo.";
+      err.hidden = false;
+    })
+    .then(function(){ btn.disabled = false; btn.textContent = "Liberar minha roleta"; });
+});
+
+/* lembra no aparelho quem já girou (atalho para "Ver meu prêmio") */
+function rememberDevice(prizeId, prizeName, code){
+  var me = { prizeId:prizeId, prizeName:prizeName, code:code, nome:state.lead && state.lead.nome, whatsapp:state.lead && state.lead.whatsapp };
+  lsSet(LS_KEY + "_me", me);
+}
+
+/* ---------------- girar ---------------- */
+function spin(){
+  if (spinning || state.stage !== "ready") return;
+  spinning = true;
+  cta.disabled = true; hub.disabled = true; cta.textContent = "Girando…";
+  wheelArea.classList.remove("ready");
+  var idx = pickPrize(), prize = PRIZES[idx], code = genCode();
+  track("roulette_started");
+  var saving = api.call({ action:"prize", whatsapp:state.lead.whatsapp, nome:state.lead.nome, prizeId:prize.id, prizeName:prize.nome, code:code })
+    .catch(function(){ return { ok:false }; });
+  spinTo(idx).then(function(){ return saving; }).then(function(res){
+    spinning = false;
+    var already = res && res.status === "exists";
+    var finalPrize = already ? prizeById(res.prizeId) : prize, finalCode = already ? res.code : code;
+    var finalName = already ? res.prizeName : prize.nome;
+    track("roulette_completed", { prize_name:finalName, prize_id:already ? res.prizeId : prize.id });
+    if (!already) track("prize_won", { prize_name:prize.nome, prize_id:prize.id, prize_code:code, prize_percent:prize.percentual });
+    rememberDevice(already ? res.prizeId : prize.id, finalName, finalCode);
+    setDone();
+    setTimeout(function(){ showResult(finalPrize, finalCode, { already:already, prizeName:finalName }); }, 450);
+  });
+}
+
+cta.addEventListener("click", function(){
+  if (state.stage === "intro") return openForm();
+  if (state.stage === "ready") return spin();
+  if (state.stage === "done" && state.result) return showResult(state.result.prize, state.result.code, { already:true, prizeName:state.result.prizeName });
+});
+hub.addEventListener("click", function(){
+  if (state.stage === "intro") return openForm();
+  spin();
+});
+wheelEl.addEventListener("click", function(){ if (state.stage === "intro") openForm(); });
+
+/* unidades: cada botão abre o WhatsApp da própria unidade */
+function buildUnits(prize, code){
+  var nome = state.lead && state.lead.nome;
+  $("unitList").innerHTML = CFG.unidades.map(function(u){
+    return '<a class="unit" href="' + esc(waLink(prize, code, nome, u)) + '" target="_blank" rel="noopener" data-unit="' + esc(u.id) + '">' +
+      '<svg width="26" height="26" viewBox="0 0 32 32" aria-hidden="true"><use href="#wa-icon"/></svg>' +
+      '<span><b>' + esc(u.nome) + '</b>' + (u.detalhe ? '<small>' + esc(u.detalhe) + '</small>' : '') + '</span>' +
+      '<span class="go" aria-hidden="true">›</span></a>';
+  }).join("");
+}
+$("waBtn").addEventListener("click", function(){
+  // com uma unidade só, vai direto
+  if (CFG.unidades.length === 1){ $("unitList").querySelector("a").click(); return; }
+  $("waBtn").hidden = true; $("unitPick").hidden = false;
+  $("resHint").textContent = "Você vai falar direto com a unidade escolhida.";
+  track("unit_picker_opened", { prize_name:state.result && state.result.prizeName });
+});
+$("unitList").addEventListener("click", function(e){
+  var a = e.target.closest("a.unit"); if (!a) return;
+  var r = state.result || {}, u = CFG.unidades.filter(function(x){ return x.id === a.dataset.unit; })[0] || {};
+  track("whatsapp_clicked", { prize_name:r.prizeName, prize_id:r.prize && r.prize.id, prize_code:r.code, unit:u.nome });
+  if (state.lead) api.beacon({ action:"click", whatsapp:state.lead.whatsapp, code:r.code, unidade:u.nome });
+});
+function copyCode(){
+  var t = $("resCodeText").textContent;
+  (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(function(){ $("copied").textContent = "Copiado!"; }, function(){});
+}
+$("resCode").addEventListener("click", copyCode);
+$("resCode").addEventListener("keydown", function(e){ if (e.key === "Enter" || e.key === " "){ e.preventDefault(); copyCode(); } });
+
+/* ---------------- volta de quem já girou neste aparelho ---------------- */
+(function restore(){
+  var me = lsGet(LS_KEY + "_me");
+  if (!me || !me.code) return;
+  state.lead = { nome:me.nome, whatsapp:me.whatsapp };
+  state.result = { prize:prizeById(me.prizeId), code:me.code, prizeName:me.prizeName };
+  setDone();
+})();
+
+/* ---------------- confete ---------------- */
+function confetti(){
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  var cv = $("confetti"), ctx = cv.getContext("2d"), dpr = Math.min(2, window.devicePixelRatio || 1);
+  cv.width = innerWidth * dpr; cv.height = innerHeight * dpr; ctx.scale(dpr, dpr);
+  var colors = ["#3F8A3A", "#B4613A", "#D6A447", "#23452A", "#F3E3C8", "#8E4526"], parts = [];
+  for (var i = 0; i < 170; i++){
+    parts.push({ x:innerWidth / 2 + (Math.random() - .5) * 80, y:innerHeight * .42, vx:(Math.random() - .5) * 15, vy:-Math.random() * 15 - 5,
+      w:6 + Math.random() * 6, h:3 + Math.random() * 6, r:Math.random() * 6, vr:(Math.random() - .5) * .35, c:colors[i % colors.length], tri:i % 3 === 0 });
+  }
+  var t0 = performance.now();
+  (function draw(t){
+    var el = t - t0; ctx.clearRect(0, 0, innerWidth, innerHeight);
+    parts.forEach(function(p){
+      p.vy += .38; p.vx *= .99; p.x += p.vx; p.y += p.vy; p.r += p.vr;
+      ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.r); ctx.fillStyle = p.c;
+      ctx.globalAlpha = Math.max(0, 1 - el / 3200);
+      if (p.tri){ ctx.beginPath(); ctx.moveTo(-p.w / 2, -p.h / 2); ctx.lineTo(p.w / 2, -p.h / 2); ctx.lineTo(0, p.h); ctx.fill(); }
+      else ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+      ctx.restore();
+    });
+    if (el < 3200) requestAnimationFrame(draw); else ctx.clearRect(0, 0, innerWidth, innerHeight);
+  })(t0);
+}
+
+track("page_view");
+if (!CFG.endpoint){
+  console.warn("[Roleta] Sem endpoint: modo demonstração (dados salvos só neste navegador).");
+  // amostra para validação: permite girar de novo neste aparelho
+  var bar = document.createElement("div");
+  bar.className = "demo-bar";
+  bar.innerHTML = 'Amostra para validação <button type="button">Girar de novo</button>';
+  bar.querySelector("button").addEventListener("click", function(){
+    try{ localStorage.removeItem(LS_KEY); localStorage.removeItem(LS_KEY + "_me"); }catch(e){}
+    location.href = location.pathname;
+  });
+  document.body.appendChild(bar);
+}
+})();
+</script>
+</body>
+</html>
